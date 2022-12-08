@@ -24,6 +24,7 @@ resource "aws_instance" "app" {
     sudo systemctl enable httpd
     sudo systemctl start httpd
     echo "<html><body><div>Hello, world!</div></body></html>" > /var/www/html/index.html
+    curl -s "https://raw.githubusercontent.com/hashicorp/learn-private-module-aws-s3-webapp/master/assets/index.html" -o /var/www/html/app.html
     EOF
 
   tags = var.tags

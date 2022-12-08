@@ -2,7 +2,7 @@
 variable "aws_region" {
   description = "AWS region"
   type        = string
-  default     = "us-west-2"
+  default     = "ap-southeast-1"
 }
 
 variable "vpc_cidr_block" {
@@ -14,7 +14,13 @@ variable "vpc_cidr_block" {
 variable "instance_count" {
   description = "Number of instances to provision."
   type        = number
-  default     = 2
+  default     = 1
+}
+
+variable "enable_nat_gateway" {
+  description = "Enable a NAT gateway in your VPC."
+  type = bool
+  default = true
 }
 
 variable "enable_vpn_gateway" {
@@ -26,13 +32,13 @@ variable "enable_vpn_gateway" {
 variable "public_subnet_count" {
   description = "Number of public subnets."
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "private_subnet_count" {
   description = "Number of private subnets."
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "public_subnet_cidr_blocks" {
@@ -69,21 +75,20 @@ variable "resource_tags" {
   description = "Tags to set for all resources"
   type        = map(string)
   default     = {
-    project     = "my-project",
-    environment = "dev"
+    project     = "project",
+    environment = "development"
   }
 
   validation {
     condition     = length(var.resource_tags["project"]) <= 16 && length(regexall("[^a-zA-Z0-9-]", var.resource_tags["project"])) == 0
-    error_message = "The project tag must be no more than 16 characters, and only contain letters, numbers, and hyphens."
+    error_message = "The <project> tag must be no more than 16 characters, and only contain letters, numbers, and hyphens."
   }
 
   validation {
     condition     = length(var.resource_tags["environment"]) <= 8 && length(regexall("[^a-zA-Z0-9-]", var.resource_tags["environment"])) == 0
-    error_message = "The environment tag must be no more than 8 characters, and only contain letters, numbers, and hyphens."
+    error_message = "The <environment> tag must be no more than 8 characters, and only contain letters, numbers, and hyphens."
   }
 }
-
 
 variable "ec2_instance_type" {
   description = "AWS EC2 instance type."
