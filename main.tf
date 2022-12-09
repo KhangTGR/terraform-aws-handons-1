@@ -1,3 +1,9 @@
+locals {
+  app_security_group = "web-sg-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  lb_security_group  = "lb-sg-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  elb_http           = "lb-${random_string.lb_id.result}-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+}
+
 terraform {
   required_providers {
     aws = {
@@ -7,7 +13,7 @@ terraform {
 }
 
 provider "aws" {
-  region  = var.aws_region
+  region = var.aws_region
 }
 
 data "aws_availability_zones" "available" {
@@ -34,7 +40,7 @@ module "app_security_group" {
   source  = "terraform-aws-modules/security-group/aws//modules/web"
   version = "3.17.0"
 
-  name        = "web-sg-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  name        = local.app_security_group
   description = "Security group for web-servers with HTTP ports open within VPC"
   vpc_id      = module.vpc.vpc_id
 
@@ -47,7 +53,7 @@ module "lb_security_group" {
   source  = "terraform-aws-modules/security-group/aws//modules/web"
   version = "3.17.0"
 
-  name        = "lb-sg-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  name        = local.lb_security_group
   description = "Security group for load balancer with HTTP ports open within VPC"
   vpc_id      = module.vpc.vpc_id
 
@@ -66,7 +72,7 @@ module "elb_http" {
   version = "2.4.0"
 
   # Ensure load balancer name is unique
-  name = "lb-${random_string.lb_id.result}-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
+  name = local.elb_http
 
   internal = false
 
