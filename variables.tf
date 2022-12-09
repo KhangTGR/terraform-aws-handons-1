@@ -76,7 +76,7 @@ variable "resource_tags" {
   type        = map(string)
   default = {
     project     = "project",
-    environment = "dev"
+    environment = "prod"
   }
 
   validation {

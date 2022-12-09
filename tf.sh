@@ -18,9 +18,12 @@ then
 elif [[ $1 == 'run' ]]
 then
     terraform apply -auto-approve
-elif [[ $1 == 'kill' ]]
+elif [[ $1 == 'destroy' ]]
 then
     terraform destroy
+elif [[ $1 == 'kill' ]]
+then
+    terraform destroy -auto-approve
 else
-    echo "Please enter either: fmt, state, init, apply, plan, run, destroy"
+    echo "Please enter either: fmt, state, init, apply, plan, run, destroy, kill"
 fi
