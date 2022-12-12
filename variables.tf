@@ -1,44 +1,13 @@
-# Variable declarations
 variable "aws_region" {
-  description = "AWS region"
+  description = "AWS region for all resources."
   type        = string
-  default     = "ap-southeast-1"
+  default     = "us-east-2"
 }
 
 variable "vpc_cidr_block" {
-  description = "CIDR block for VPC"
+  description = "CIDR block for VPC."
   type        = string
   default     = "10.0.0.0/16"
-}
-
-variable "instance_count" {
-  description = "Number of instances to provision."
-  type        = number
-  default     = 1
-}
-
-variable "enable_nat_gateway" {
-  description = "Enable a NAT gateway in your VPC."
-  type        = bool
-  default     = true
-}
-
-variable "enable_vpn_gateway" {
-  description = "Enable a VPN gateway in your VPC."
-  type        = bool
-  default     = false
-}
-
-variable "public_subnet_count" {
-  description = "Number of public subnets."
-  type        = number
-  default     = 1
-}
-
-variable "private_subnet_count" {
-  description = "Number of private subnets."
-  type        = number
-  default     = 1
 }
 
 variable "public_subnet_cidr_blocks" {
@@ -53,6 +22,14 @@ variable "public_subnet_cidr_blocks" {
     "10.0.6.0/24",
     "10.0.7.0/24",
     "10.0.8.0/24",
+    "10.0.9.0/24",
+    "10.0.10.0/24",
+    "10.0.11.0/24",
+    "10.0.12.0/24",
+    "10.0.13.0/24",
+    "10.0.14.0/24",
+    "10.0.15.0/24",
+    "10.0.16.0/24"
   ]
 }
 
@@ -68,30 +45,35 @@ variable "private_subnet_cidr_blocks" {
     "10.0.106.0/24",
     "10.0.107.0/24",
     "10.0.108.0/24",
+    "10.0.109.0/24",
+    "10.0.110.0/24",
+    "10.0.111.0/24",
+    "10.0.112.0/24",
+    "10.0.113.0/24",
+    "10.0.114.0/24",
+    "10.0.115.0/24",
+    "10.0.116.0/24"
   ]
 }
 
-variable "resource_tags" {
-  description = "Tags to set for all resources"
-  type        = map(string)
+variable "project" {
+  description = "Map of project names to configuration."
+  type        = map(any)
+
   default = {
-    project     = "project",
-    environment = "prod"
+    client-webapp = {
+      public_subnets_per_vpc  = 2,
+      private_subnets_per_vpc = 2,
+      instances_per_subnet    = 2,
+      instance_type           = "t2.micro",
+      environment             = "dev"
+    },
+    internal-webapp = {
+      public_subnets_per_vpc  = 1,
+      private_subnets_per_vpc = 1,
+      instances_per_subnet    = 2,
+      instance_type           = "t2.nano",
+      environment             = "test"
+    }
   }
-
-  validation {
-    condition     = length(var.resource_tags["project"]) <= 16 && length(regexall("[^a-zA-Z0-9-]", var.resource_tags["project"])) == 0
-    error_message = "The <project> tag must be no more than 16 characters, and only contain letters, numbers, and hyphens."
-  }
-
-  validation {
-    condition     = length(var.resource_tags["environment"]) <= 8 && length(regexall("[^a-zA-Z0-9-]", var.resource_tags["environment"])) == 0
-    error_message = "The <environment> tag must be no more than 8 characters, and only contain letters, numbers, and hyphens."
-  }
-}
-
-variable "ec2_instance_type" {
-  description = "AWS EC2 instance type."
-  type        = string
-  default     = "t2.micro"
 }

@@ -31,5 +31,10 @@ resource "aws_instance" "app" {
     curl "https://gist.githubusercontent.com/ZiKT1229/5935a10ce818ea7b851ea85ecf55b4da/raw/cd1119f65876d1b5db705ea2dc9097c5f5694ba5/snake.html" -o /var/www/html/app.html
     EOF
 
-  tags = var.tags
+
+  tags = {
+    Terraform   = "true"
+    Project     = var.project_name
+    Environment = var.environment
+  }
 }

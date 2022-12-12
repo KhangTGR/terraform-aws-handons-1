@@ -1,86 +1,82 @@
-locals {
-  app_security_group = "web-sg-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
-  lb_security_group  = "lb-sg-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
-  elb_http           = "lb-${random_string.lb_id.result}-${var.resource_tags["project"]}-${var.resource_tags["environment"]}"
-}
-
-terraform {
-  required_providers {
-    aws = {
-      source = "hashicorp/aws"
-    }
-  }
-}
-
 provider "aws" {
   region = var.aws_region
 }
 
 data "aws_availability_zones" "available" {
   state = "available"
+
+  filter {
+    name   = "zone-type"
+    values = ["availability-zone"]
+  }
 }
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "2.64.0"
+  version = "3.14.2"
+
+  for_each = var.project
 
   cidr = var.vpc_cidr_block
 
   azs             = data.aws_availability_zones.available.names
-  private_subnets = slice(var.private_subnet_cidr_blocks, 0, var.private_subnet_count)
-  public_subnets  = slice(var.public_subnet_cidr_blocks, 0, var.public_subnet_count)
+  private_subnets = slice(var.private_subnet_cidr_blocks, 0, each.value.private_subnets_per_vpc)
+  public_subnets  = slice(var.public_subnet_cidr_blocks, 0, each.value.public_subnets_per_vpc)
 
-  enable_nat_gateway = var.enable_nat_gateway
-  enable_vpn_gateway = var.enable_vpn_gateway
+  enable_nat_gateway = true
+  enable_vpn_gateway = false
 
-  tags = var.resource_tags
+  map_public_ip_on_launch = false
 }
 
 module "app_security_group" {
   source  = "terraform-aws-modules/security-group/aws//modules/web"
-  version = "3.17.0"
+  version = "4.9.0"
 
-  name        = local.app_security_group
+  for_each = var.project
+
+  name        = "web-server-sg-${each.key}-${each.value.environment}"
   description = "Security group for web-servers with HTTP ports open within VPC"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = module.vpc[each.key].vpc_id
 
-  ingress_cidr_blocks = module.vpc.public_subnets_cidr_blocks
-
-  tags = var.resource_tags
+  ingress_cidr_blocks = module.vpc[each.key].public_subnets_cidr_blocks
 }
 
 module "lb_security_group" {
   source  = "terraform-aws-modules/security-group/aws//modules/web"
-  version = "3.17.0"
+  version = "4.9.0"
 
-  name        = local.lb_security_group
+  for_each = var.project
+
+  name = "load-balancer-sg-${each.key}-${each.value.environment}"
+
   description = "Security group for load balancer with HTTP ports open within VPC"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = module.vpc[each.key].vpc_id
 
   ingress_cidr_blocks = ["0.0.0.0/0"]
-
-  tags = var.resource_tags
 }
 
 resource "random_string" "lb_id" {
-  length  = 3
+  length  = 4
   special = false
 }
 
 module "elb_http" {
   source  = "terraform-aws-modules/elb/aws"
-  version = "2.4.0"
+  version = "3.0.1"
 
-  # Ensure load balancer name is unique
-  name = local.elb_http
+  for_each = var.project
 
+  # Comply with ELB name restrictions
+  # https://docs.aws.amazon.com/elasticloadbalancing/2012-06-01/APIReference/API_CreateLoadBalancer.html
+  name     = trimsuffix(substr(replace(join("-", ["lb", random_string.lb_id.result, each.key, each.value.environment]), "/[^a-zA-Z0-9-]/", ""), 0, 32), "-")
   internal = false
 
-  security_groups = [module.lb_security_group.this_security_group_id]
-  subnets         = module.vpc.public_subnets
+  security_groups = [module.lb_security_group[each.key].security_group_id]
+  subnets         = module.vpc[each.key].public_subnets
 
-  number_of_instances = length(module.ec2_instances.instance_ids)
-  instances           = module.ec2_instances.instance_ids
+  number_of_instances = length(module.ec2_instances[each.key].instance_ids)
+  instances           = module.ec2_instances[each.key].instance_ids
 
   listener = [{
     instance_port     = "80"
@@ -96,19 +92,19 @@ module "elb_http" {
     unhealthy_threshold = 10
     timeout             = 5
   }
-
-  tags = var.resource_tags
 }
 
 module "ec2_instances" {
-  source = "./modules/aws-instance"
-
+  source     = "./modules/aws-instance"
   depends_on = [module.vpc]
 
-  instance_count     = var.instance_count
-  instance_type      = var.ec2_instance_type
-  subnet_ids         = module.vpc.private_subnets[*]
-  security_group_ids = [module.app_security_group.this_security_group_id]
+  for_each = var.project
 
-  tags = var.resource_tags
+  instance_count     = each.value.instances_per_subnet * length(module.vpc[each.key].private_subnets)
+  instance_type      = each.value.instance_type
+  subnet_ids         = module.vpc[each.key].private_subnets[*]
+  security_group_ids = [module.app_security_group[each.key].security_group_id]
+
+  project_name = each.key
+  environment  = each.value.environment
 }
